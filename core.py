@@ -19,26 +19,12 @@ class Message(object):
         self.key_encypt_algo = kwargs['key_encrypt_algo']
         self.msg_encypt_algo = kwargs['msg_encypt_algo']
         self.signature_algo = kwargs['signature_algo']
+        self.signature_val = kwargs['signature_val']
+        self.digest_val = kwargs['digest_val']
+        self.key_encrypted = kwargs['key_encrypted']
 
+        self.headers = kwargs['headers']
         self.payload = kwargs['payload']
-
-        # If the values were not specified, we calculate them.
-        # Generally, we don't specify these values for outgoing messages,
-        # while they'll be present in incoming messages.
-        if 'digest_val' in kwargs:
-            self.digest_val = kwargs['digest_val']
-        else:
-            self.digest_val = self._calculate_digest()
-
-        if 'signature_val' in kwargs:
-            self.signature_val = kwargs['signature_val']
-        else:
-            self.signature_val = self._calculate_signature()
-
-        if 'key_encrypted' in kwargs:
-            self.key_encrypted = kwargs['key_encrypted']
-        else:
-            self.key_encrypted = self._calculate_sym_key()
 
     """
     Verifies if the signature received matches the calculated one.
@@ -66,7 +52,7 @@ class Message(object):
     """
     Build and return the message headers dict and payload tuple.
     """
-    def to_request(self):
+    def _build_headers(self):
         prefix = 'X-JAG-'
         headers = {}
         headers[prefix + 'CertificateId'] = self.certificate_id
@@ -78,18 +64,55 @@ class Message(object):
         headers[prefix + 'EncKeyAlg'] = self.key_encrypt_algo
         headers[prefix + 'EncKeyValue'] = self.key_encrypted
 
-        payload = self.payload
+        return headers
 
-        return (headers, payload)
 
-    """
-    Create a `Message` instance from headers dict and payload supplied.
-    """
+"""
+Wrapper class for requests messages.
+"""
+class RequestMessage(Message):
+    def __init__(self, **kwargs):
+        self.target_url = kwargs['target_url']
+        Message.__init__(self, kwargs)
+
     @staticmethod
-    def from_request(headers_dict, payload):
+    def from_request(url, headers_dict, payload):
         prefix = 'X-JAG-'
 
-        return Message(certificate_id=headers_dict[prefix + 'CertificateId'],
+        return RequestMessage(certificate_id=headers_dict[prefix + 'CertificateId'],
+            digest_algo = headers_dict[prefix + 'DigestAlg'],
+            digest_val = headers_dict[prefix + 'DigestValue'],
+            signature_algo = headers_dict[prefix + 'SigAlg'],
+            signature_val = headers_dict[prefix + 'SigValue'],
+            msg_encrypt_algo = headers_dict[prefix + 'EncAlg'],
+            key_encrypt_algo = headers_dict[prefix + 'EncKeyAlg'],
+            key_encrypted = headers_dict[prefix + 'EncKeyValue'],
+            payload=payload, url=url)
+
+
+"""
+Wrapper class for response messages.
+"""
+class ResponseMessage(Message):
+    def __init__(self, **kwargs):
+        kwargs['signature_val'] = self._calculate_signature()
+        kwargs['digest_val'] = self._calculate_digest()
+        kwargs['key_encrypted'] = self._calculate_sym_key()
+
+        Message.__init__(self, **kwargs)
+
+    """
+    Returns a tuple of response message headers and payload.
+    """
+    def to_response():
+        headers = self._build_headers()
+        return (headers, self.payload)
+
+    @staticmethod
+    def from_response(headers_dict, payload):
+        prefix = 'X-JAG-'
+
+        return ResponseMessage(certificate_id=headers_dict[prefix + 'CertificateId'],
             digest_algo = headers_dict[prefix + 'DigestAlg'],
             digest_val = headers_dict[prefix + 'DigestValue'],
             signature_algo = headers_dict[prefix + 'SigAlg'],
@@ -98,6 +121,7 @@ class Message(object):
             key_encrypt_algo = headers_dict[prefix + 'EncKeyAlg'],
             key_encrypted = headers_dict[prefix + 'EncKeyValue'],
             payload=payload)
+
 
 """
 Encrypts a message.
