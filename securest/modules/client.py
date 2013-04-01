@@ -21,9 +21,12 @@ class SecurestClient(object):
 
     def _handle_response(self, response_obj):
         # handle response here (verify, decrypt, etc.)
-        rm = ResponseMessage.from_response(response_obj.headers,
-                response_obj.text, self.server_certificate, )
+        rm = InboundMessage.from_message_data(headers_dict=response_obj.headers,
+                payload=response_obj.text, local_private_key=self.private_key,
+                is_request=False, certificate=self.server_certificate)
 
+        rm.decrypt()
+        return rm.to_message_data()
 
     """
     Utility method to make a request and return a response.
@@ -33,15 +36,24 @@ class SecurestClient(object):
     def make_request(self, url, **kwargs):
         headers = kwargs['headers']
         data = kwargs['data']
-        url = url
 
-        rm = RequestMessage.from_request(url, headers, data,
-                self.local_certificate, self.server_certificate.public_key,
-                self.private_key)
+        params = {
+            'certificate': self.local_certificate,
+            'digest_algo': 'SHA1',
+            'signature_algo': 'RSA-SHA1',
+            'msg_encrypt_algo': 'AES',
+            'key_encrypt_algo': 'RSA',
+            'payload': data,
+            'remote_public_key': self.server_certificate.public_key,
+            'url': url,
+            'is_request': True)
+        }
+
+        rm = OutboundMessage(**params)
 
         rm.encrypt()
-        (headers, content) = rm.to_request()
+        (headers, content) = rm.to_message_data()
 
         # `response` will contain unprocess/encrypted response.
         response = request.post(url, headers=headers, data=content)
-        self._handle_response(response)
+        return self._handle_response(response)

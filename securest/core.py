@@ -1,4 +1,5 @@
-import Crypto
+from Crypto import Random
+from Crypto.PublicKey import RSA
 import hashlib
 
 
@@ -10,8 +11,8 @@ Accepts a few required keyword parameters:
 * `certificate`: Sender's unique certificate identifier.
 * `digest_algo`: Algorithm used to calculate message digest.
 * `digest_val`: Value of digest received.
-* `key_encypt_algo`: Algorithm used to encrypt the symmetric key, which is used
-to encrypt the message.
+* `key_encypt_algo`: Algorithm used to encrypt the symmetric key, which is
+used to encrypt the message.
 * `msg_encypt_algo`: Algorithm used to encrypt the message.
 * `signature_algo`: Algorithm used to calculate signature value.
 * `signature_val`: Signature value.
@@ -20,7 +21,6 @@ class Message(object):
     prefix = 'X-JAG-'
     
     def __init__(self, **kwargs):
-        self.target_public_key = kwargs['target_pk']
         self.digest_algo = kwargs['digest_algo']
         self.key_encypt_algo = kwargs['key_encrypt_algo']
         self.msg_encypt_algo = kwargs['msg_encypt_algo']
@@ -28,6 +28,8 @@ class Message(object):
         self.signature_val = kwargs['signature_val']
         self.digest_val = kwargs['digest_val']
         self.key_encrypted = kwargs['key_encrypted']
+        self.url = kwargs['url']
+        self.is_request = kwargs['is_request']
 
         self.headers = kwargs['headers']
         self.payload = kwargs['payload']
@@ -35,11 +37,19 @@ class Message(object):
         self.certificate = kwargs['certificate']
 
     """
+    Returns a tuple of response message headers and payload.
+    """
+    def to_message_data():
+        headers = self._build_headers()
+        return (headers, self.payload)
+
+    """
     Verifies if the signature received matches the calculated one.
 
     Raises an exception, when `signature` is not found as an object variable.
     """
     def verify_signature(self):
+        # TODO:FIX decrypt the signature and check with calculated digest
         if self.signature_val == self._calculate_signature():
             return True
         else:
@@ -49,9 +59,11 @@ class Message(object):
         digest = self._calculate_digest()
         public_key = self.target_public_key
         
-        if self.signature_algo == 'RSA-1024':
-
-
+        if self.signature_algo == 'RSA-SHA1':
+            # TODO: fix placeholder
+            key = rsa.key(public_key)
+            signature_val = key.encrypt(digest)
+            # encrypt with the public key here
 
         
         # now encrypt
@@ -71,7 +83,7 @@ class Message(object):
                 self.certificate_id)
 
             # add url to digest if its a request message
-            if isinstance(self, RequestMessage):
+            if self.is_request == True:
                 digest_string += self.url
                 
             digest_val = hashlib.md5().update(digest_string).digest()
@@ -97,87 +109,83 @@ class Message(object):
 
 
 """
-Wrapper class for requests messages.
+Wrapper class for inbound messages.
 """
-class RequestMessage(Message):
+class InboundMessage(Message):
     def __init__(self, **kwargs):
-        self.url = kwargs['url']
+        self.url = kwargs['url'] if 'url' in kwargs else ''
+        self.local_private_key = kwargs['local_private_key']
         Message.__init__(self, kwargs)
 
     @staticmethod
-    def from_request(url, headers_dict, payload, certificate, target_pk):
+    def from_message_data(**kwargs):
         prefix = Message.prefix
+        headers_dict = kwargs['headers_dict']
 
-        return RequestMessage(certificate=certificate,
-            digest_algo=headers_dict[prefix + 'DigestAlg'],
-            digest_val=headers_dict[prefix + 'DigestValue'],
-            signature_algo=headers_dict[prefix + 'SigAlg'],
-            signature_val=headers_dict[prefix + 'SigValue'],
-            msg_encrypt_algo=headers_dict[prefix + 'EncAlg'],
-            key_encrypt_algo=headers_dict[prefix + 'EncKeyAlg'],
-            key_encrypted=headers_dict[prefix + 'EncKeyValue'],
-            payload=payload, url=url, target_pk=target_pk)
+        params = {
+            'certificate': kwargs['certificate'],
+            'digest_algo': headers_dict[prefix + 'DigestAlg'],
+            'digest_val': headers_dict[prefix + 'DigestValue'],
+            'signature_algo': headers_dict[prefix + 'SigAlg'],
+            'signature_val': headers_dict[prefix + 'SigValue'],
+            'msg_encrypt_algo': headers_dict[prefix + 'EncAlg'],
+            'key_encrypt_algo': headers_dict[prefix + 'EncKeyAlg'],
+            'key_encrypted': headers_dict[prefix + 'EncKeyValue'],
+            'payload': kwargs['payload'],
+            'local_private_key': kwargs['local_private_key'],
+            'url': kwargs['url'],
+            'is_request': kwargs['is_request'])
+        }
+
+        return InboundMessage(**params)
 
 
 """
-Wrapper class for response messages.
+Wrapper class for outbound messages.
 """
-class ResponseMessage(Message):
+class OutboundMessage(Message):
     def __init__(self, **kwargs):
+        self.remote_public_key = kwargs['remote_public_key']
+
+        # OutboundMessage() doesn't need these values, it will calculate them
         kwargs['signature_val'] = self._calculate_signature()
         kwargs['digest_val'] = self._calculate_digest()
         kwargs['key_encrypted'] = self._calculate_sym_key()
 
         Message.__init__(self, **kwargs)
 
-    """
-    Returns a tuple of response message headers and payload.
-    """
-    def to_response():
-        headers = self._build_headers()
-        return (headers, self.payload)
-
-    @staticmethod
-    def from_response(headers_dict, payload, certificate, target_pk):
-        prefix = 'X-JAG-'
-
-        return ResponseMessage(certificate=certificate,
-            digest_algo=headers_dict[prefix + 'DigestAlg'],
-            digest_val=headers_dict[prefix + 'DigestValue'],
-            signature_algo=headers_dict[prefix + 'SigAlg'],
-            signature_val=headers_dict[prefix + 'SigValue'],
-            msg_encrypt_algo=headers_dict[prefix + 'EncAlg'],
-            key_encrypt_algo=headers_dict[prefix + 'EncKeyAlg'],
-            key_encrypted=headers_dict[prefix + 'EncKeyValue'],
-            payload=payload, target_pk=target_pk)
-
 
 """
-Base class for storing certificate data in the database.
+Base class for storing certificate data.
 
 Sub-classes must extend the methods `get` and `save`.
 """
 class CertificateModel(object):
     def __init__(self, **kwargs):
         self.cert_id = kwargs['cert_id']
+        self.key_algo = kwargs['key_algo']
+
         if 'public_key' in kwargs:
             self.public_key = kwargs['public_key']
         else:
             self.public_key = None
-        
-        if 'private_key' in kwargs:
-            self.private_key = kwargs['private_key']
-        else:
-            self.private_key = None
 
     def _generate_keys():
         # generate RSA keys here
+        if self.key_algo == 'RSA-1024':
+            randomizer = Random.new().read
+            key = RSA.generate(1024, randomizer)
+            self.public_key = key.publickey().exportKey()
+
+            # return the private key
+            return key.exportKey()
 
     @staticmethod
     def get(certificate_id):
         raise 'NotImplementedException'
 
     def save(self):
+        # Must return a private key
         raise 'NotImplementedException'
 
 
