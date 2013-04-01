@@ -1,7 +1,7 @@
 import json
 import requests
 
-from securest.core import CertificateModel, RequestMessage, ResponseMessage
+from securest.core import CertificateModel, InboundMessage, OutboundMessage
 
 
 """
@@ -46,7 +46,7 @@ class SecurestClient(object):
             'payload': data,
             'remote_public_key': self.server_certificate.public_key,
             'url': url,
-            'is_request': True)
+            'is_request': True
         }
 
         rm = OutboundMessage(**params)

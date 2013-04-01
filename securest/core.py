@@ -43,30 +43,14 @@ class Message(object):
         headers = self._build_headers()
         return (headers, self.payload)
 
-    """
-    Verifies if the signature received matches the calculated one.
-
-    Raises an exception, when `signature` is not found as an object variable.
-    """
-    def verify_signature(self):
-        # TODO:FIX decrypt the signature and check with calculated digest
-        if self.signature_val == self._calculate_signature():
-            return True
-        else:
-            return False
-
     def _calculate_signature(self):
         digest = self._calculate_digest()
         public_key = self.target_public_key
         
         if self.signature_algo == 'RSA-SHA1':
-            # TODO: fix placeholder
-            key = rsa.key(public_key)
+            key = RSA.importKey(public_key)
             signature_val = key.encrypt(digest)
-            # encrypt with the public key here
-
         
-        # now encrypt
         return signature_val
 
     def _calculate_sym_key(self):
@@ -77,8 +61,8 @@ class Message(object):
         # TODO
         algo = self.digest_algo
 
-        if algo == 'md5':
-            payload_hash = hashlib.md5().update(self.certificate_id).digest()
+        if algo == 'SHA1':
+            payload_hash = hashlib.sha1(self.certificate_id).hexdigest()
             digest_string = payload_hash + self.signature_algo + (
                 self.certificate_id)
 
@@ -86,7 +70,7 @@ class Message(object):
             if self.is_request == True:
                 digest_string += self.url
                 
-            digest_val = hashlib.md5().update(digest_string).digest()
+            digest_val = hashlib.sha1(digest_string).hexdigest()
 
         return digest_val
 
@@ -117,6 +101,23 @@ class InboundMessage(Message):
         self.local_private_key = kwargs['local_private_key']
         Message.__init__(self, kwargs)
 
+    """
+    Verifies if the signature received matches the calculated one.
+
+    Raises an exception, when `signature` is not found as an object variable.
+    """
+    def verify_signature(self):
+        # TODO:FIX decrypt the signature and check with calculated digest
+        digest = self._calculate_digest()
+        public_key = self.target_public_key
+        key = RSA.importKey(self.local_private_key)
+        calc_signature = key.decrypt(self.signature_val)
+        
+        if self.digest_val == key.decrypt(self._calculate_signature()):
+            return True
+        else:
+            return False
+
     @staticmethod
     def from_message_data(**kwargs):
         prefix = Message.prefix
@@ -134,7 +135,7 @@ class InboundMessage(Message):
             'payload': kwargs['payload'],
             'local_private_key': kwargs['local_private_key'],
             'url': kwargs['url'],
-            'is_request': kwargs['is_request'])
+            'is_request': kwargs['is_request']
         }
 
         return InboundMessage(**params)

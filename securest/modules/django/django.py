@@ -43,7 +43,7 @@ class Middleware():
             'key_encrypt_algo': 'RSA',
             'payload': data,
             'remote_public_key': self.client_certificate.public_key,
-            'is_request': False)
+            'is_request': False
         }
 
         response_msg = OutboundMessage(**params)
