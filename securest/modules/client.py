@@ -11,19 +11,22 @@ class SecurestClient(object):
     def __init__(self, **kwargs):
         self.local_certificate = CertificateModel(
             public_key=kwargs['client_public_key'],
-            cert_id=kwargs['client_certificate_id'])
+            cert_id=kwargs['client_certificate_id'],
+            key_algo='RSA')
 
         self.server_certificate = CertificateModel(
             public_key=kwargs['server_public_key'],
-            cert_id=kwargs['server_certificate_id'])
+            cert_id=kwargs['server_certificate_id'],
+            key_algo='RSA')
 
         self.private_key = kwargs['private_key']
 
     def _handle_response(self, response_obj):
         # handle response here (verify, decrypt, etc.)
         rm = InboundMessage.from_message_data(headers_dict=response_obj.headers,
-                payload=response_obj.text, local_private_key=self.private_key,
-                is_request=False, certificate=self.server_certificate)
+                payload=response_obj.text.decode('base64'), local_private_key=self.private_key,
+                is_request=False, certificate=self.server_certificate, url='')
+
 
         rm.decrypt()
         return rm.to_message_data()
@@ -46,7 +49,8 @@ class SecurestClient(object):
             'payload': data,
             'remote_public_key': self.server_certificate.public_key,
             'url': url,
-            'is_request': True
+            'is_request': True,
+            'headers': headers 
         }
 
         rm = OutboundMessage(**params)
@@ -55,5 +59,5 @@ class SecurestClient(object):
         (headers, content) = rm.to_message_data()
 
         # `response` will contain unprocess/encrypted response.
-        response = request.post(url, headers=headers, data=content)
+        response = requests.post(url, headers=headers, data=content)
         return self._handle_response(response)

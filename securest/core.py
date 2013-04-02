@@ -18,58 +18,58 @@ used to encrypt the message.
 * `signature_val`: Signature value.
 """
 class Message(object):
-    prefix = 'X-JAG-'
+    prefix = 'X_JAG_'
     
     def __init__(self, **kwargs):
         self.digest_algo = kwargs['digest_algo']
-        self.key_encypt_algo = kwargs['key_encrypt_algo']
-        self.msg_encypt_algo = kwargs['msg_encypt_algo']
+        self.key_encrypt_algo = kwargs['key_encrypt_algo']
+        self.msg_encrypt_algo = kwargs['msg_encrypt_algo']
         self.signature_algo = kwargs['signature_algo']
         self.signature_val = kwargs['signature_val']
         self.digest_val = kwargs['digest_val']
+
         self.key_encrypted = kwargs['key_encrypted']
         self.url = kwargs['url']
         self.is_request = kwargs['is_request']
 
-        self.headers = kwargs['headers']
         self.payload = kwargs['payload']
+        self.headers = kwargs['headers']
 
         self.certificate = kwargs['certificate']
 
     """
     Returns a tuple of response message headers and payload.
     """
-    def to_message_data():
+    def to_message_data(self):
         headers = self._build_headers()
         return (headers, self.payload)
 
     def _calculate_signature(self):
         digest = self._calculate_digest()
-        public_key = self.target_public_key
+        public_key = self.remote_public_key
         
         if self.signature_algo == 'RSA-SHA1':
             key = RSA.importKey(public_key)
-            signature_val = key.encrypt(digest)
+            signature_val = key.encrypt(digest, 32)
         
-        return signature_val
+        return signature_val[0]
 
     def _calculate_sym_key(self):
         # TODO
-        return symmetric_key
+        return '11'
 
     def _calculate_digest(self):
         # TODO
         algo = self.digest_algo
-
         if algo == 'SHA1':
-            payload_hash = hashlib.sha1(self.certificate_id).hexdigest()
+            payload_hash = hashlib.sha1(self.certificate.cert_id).hexdigest()
             digest_string = payload_hash + self.signature_algo + (
-                self.certificate_id)
+                self.certificate.cert_id)
 
             # add url to digest if its a request message
             if self.is_request == True:
                 digest_string += self.url
-                
+
             digest_val = hashlib.sha1(digest_string).hexdigest()
 
         return digest_val
@@ -80,12 +80,12 @@ class Message(object):
     def _build_headers(self):
         prefix = Message.prefix
         headers = {}
-        headers[prefix + 'CertificateId'] = self.certificate_id
-        headers[prefix + 'DigestAlg'] = self.digest_alg
+        headers[prefix + 'CertificateId'] = self.certificate.cert_id
+        headers[prefix + 'DigestAlg'] = self.digest_algo
         headers[prefix + 'DigestValue'] = self.digest_val
         headers[prefix + 'SigAlg'] = self.signature_algo
         headers[prefix + 'SigValue'] = self.signature_val
-        headers[prefix + 'EncAlg'] = self.msg_encypt_algo
+        headers[prefix + 'EncAlg'] = self.msg_encrypt_algo
         headers[prefix + 'EncKeyAlg'] = self.key_encrypt_algo
         headers[prefix + 'EncKeyValue'] = self.key_encrypted
 
@@ -99,7 +99,7 @@ class InboundMessage(Message):
     def __init__(self, **kwargs):
         self.url = kwargs['url'] if 'url' in kwargs else ''
         self.local_private_key = kwargs['local_private_key']
-        Message.__init__(self, kwargs)
+        Message.__init__(self, **kwargs)
 
     """
     Verifies if the signature received matches the calculated one.
@@ -109,33 +109,40 @@ class InboundMessage(Message):
     def verify_signature(self):
         # TODO:FIX decrypt the signature and check with calculated digest
         digest = self._calculate_digest()
-        public_key = self.target_public_key
         key = RSA.importKey(self.local_private_key)
-        calc_signature = key.decrypt(self.signature_val)
-        
-        if self.digest_val == key.decrypt(self._calculate_signature()):
+        calc_digest = key.decrypt(self.signature_val)
+
+        if self.digest_val == calc_digest:
             return True
         else:
             return False
-
+    
+    """
+    Utility method to decrypt.
+    """
+    def decrypt(self):
+        key = RSA.importKey(self.local_private_key)
+        self.payload = key.decrypt(self.payload)
+    
     @staticmethod
     def from_message_data(**kwargs):
-        prefix = Message.prefix
+        prefix = 'HTTP_' + Message.prefix
         headers_dict = kwargs['headers_dict']
 
         params = {
             'certificate': kwargs['certificate'],
-            'digest_algo': headers_dict[prefix + 'DigestAlg'],
-            'digest_val': headers_dict[prefix + 'DigestValue'],
-            'signature_algo': headers_dict[prefix + 'SigAlg'],
-            'signature_val': headers_dict[prefix + 'SigValue'],
-            'msg_encrypt_algo': headers_dict[prefix + 'EncAlg'],
-            'key_encrypt_algo': headers_dict[prefix + 'EncKeyAlg'],
-            'key_encrypted': headers_dict[prefix + 'EncKeyValue'],
+            'digest_algo': headers_dict[(prefix + 'DigestAlg').upper()],
+            'digest_val': headers_dict[(prefix + 'DigestValue').upper()],
+            'signature_algo': headers_dict[(prefix + 'SigAlg').upper()],
+            'signature_val': headers_dict[(prefix + 'SigValue').upper()],
+            'msg_encrypt_algo': headers_dict[(prefix + 'EncAlg').upper()],
+            'key_encrypt_algo': headers_dict[(prefix + 'EncKeyAlg').upper()],
+            'key_encrypted': headers_dict[(prefix + 'EncKeyValue').upper()],
             'payload': kwargs['payload'],
             'local_private_key': kwargs['local_private_key'],
             'url': kwargs['url'],
-            'is_request': kwargs['is_request']
+            'is_request': kwargs['is_request'],
+            'headers': headers_dict,
         }
 
         return InboundMessage(**params)
@@ -148,12 +155,24 @@ class OutboundMessage(Message):
     def __init__(self, **kwargs):
         self.remote_public_key = kwargs['remote_public_key']
 
-        # OutboundMessage() doesn't need these values, it will calculate them
-        kwargs['signature_val'] = self._calculate_signature()
-        kwargs['digest_val'] = self._calculate_digest()
-        kwargs['key_encrypted'] = self._calculate_sym_key()
-
+        kwargs['signature_val'] = ''
+        kwargs['digest_val'] = ''
+        kwargs['key_encrypted'] = ''
         Message.__init__(self, **kwargs)
+
+        # OutboundMessage() doesn't need these values, it will calculate them
+        self.signature_val = self._calculate_signature()
+        self.digest_val = self._calculate_digest()
+        self.key_encrypted = self._calculate_sym_key()
+
+    """
+    Encrypts a message.
+    """
+    def encrypt(self):
+        digest = self._calculate_digest()
+        public_key = self.remote_public_key
+        key = RSA.importKey(public_key)
+        self.payload = key.encrypt(self.payload, 32)[0]
 
 
 """
@@ -171,9 +190,9 @@ class CertificateModel(object):
         else:
             self.public_key = None
 
-    def _generate_keys():
+    def _generate_keys(self):
         # generate RSA keys here
-        if self.key_algo == 'RSA-1024':
+        if self.key_algo == 'RSA':
             randomizer = Random.new().read
             key = RSA.generate(1024, randomizer)
             self.public_key = key.publickey().exportKey()
@@ -188,18 +207,3 @@ class CertificateModel(object):
     def save(self):
         # Must return a private key
         raise 'NotImplementedException'
-
-
-"""
-Encrypts a message.
-"""
-def encrypt(message):
-    # encrypt the message
-    return Message()
-
-"""
-Utility method to decrypt.
-"""
-def decrypt(message):
-    # return Message object after decryption
-    return Message()
