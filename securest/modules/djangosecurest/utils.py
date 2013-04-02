@@ -16,6 +16,9 @@ PROTECT_LIST = settings.SECUREST_PROTECT_LIST
 
 """
 Django middleware to process request and response.
+
+Patches the `request` object by inserting `securest_decrypted` dict which
+contains all the request data.
 """
 class Middleware(object):
     def __init__(self):
@@ -26,7 +29,6 @@ class Middleware(object):
             return None
 
         prefix = 'HTTP_' + Message.prefix
-
         if not (prefix + 'CERTIFICATEID' in request.META):
             return None
 
@@ -40,7 +42,7 @@ class Middleware(object):
             is_request=True)
 
         if request_msg.verify_signature() == False:
-            return HttpResponse(error)
+            return HttpResponse('error')
         else:
             request_msg.decrypt()
             (headers, content) = request_msg.to_message_data()
@@ -76,8 +78,7 @@ class Middleware(object):
         for key in headers.keys():
             response[key] = headers[key]
 
-        response.content = encrypted.encode('base64')
-        print 'hi'
+        response.content = encrypted.encode('hex')
         return response
 
 

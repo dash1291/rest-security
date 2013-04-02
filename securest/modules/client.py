@@ -23,8 +23,10 @@ class SecurestClient(object):
 
     def _handle_response(self, response_obj):
         # handle response here (verify, decrypt, etc.)
-        rm = InboundMessage.from_message_data(headers_dict=response_obj.headers,
-                payload=response_obj.text.decode('base64'), local_private_key=self.private_key,
+        rm = InboundMessage.from_message_data(
+                headers_dict=response_obj.headers,
+                payload=response_obj.text.decode('hex'),
+                local_private_key=self.private_key,
                 is_request=False, certificate=self.server_certificate, url='')
 
 

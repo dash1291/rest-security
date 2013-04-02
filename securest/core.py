@@ -50,9 +50,9 @@ class Message(object):
         
         if self.signature_algo == 'RSA-SHA1':
             key = RSA.importKey(public_key)
-            signature_val = key.encrypt(digest, 32)
+            signature_val = key.encrypt(digest, 32)[0]
         
-        return signature_val[0]
+        return signature_val.encode('hex')
 
     def _calculate_sym_key(self):
         # TODO
@@ -62,7 +62,7 @@ class Message(object):
         # TODO
         algo = self.digest_algo
         if algo == 'SHA1':
-            payload_hash = hashlib.sha1(self.certificate.cert_id).hexdigest()
+            payload_hash = hashlib.sha1(self.payload).hexdigest()
             digest_string = payload_hash + self.signature_algo + (
                 self.certificate.cert_id)
 
@@ -110,7 +110,7 @@ class InboundMessage(Message):
         # TODO:FIX decrypt the signature and check with calculated digest
         digest = self._calculate_digest()
         key = RSA.importKey(self.local_private_key)
-        calc_digest = key.decrypt(self.signature_val)
+        calc_digest = key.decrypt(self.signature_val.decode('hex'))
 
         if self.digest_val == calc_digest:
             return True
@@ -169,10 +169,14 @@ class OutboundMessage(Message):
     Encrypts a message.
     """
     def encrypt(self):
-        digest = self._calculate_digest()
         public_key = self.remote_public_key
         key = RSA.importKey(public_key)
         self.payload = key.encrypt(self.payload, 32)[0]
+
+        # OutboundMessage() doesn't need these values, it will calculate them
+        self.signature_val = self._calculate_signature()
+        self.digest_val = self._calculate_digest()
+        self.key_encrypted = self._calculate_sym_key()
 
 
 """
