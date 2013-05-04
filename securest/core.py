@@ -1,6 +1,10 @@
+import logging
+
 from Crypto import Random
 from Crypto.PublicKey import RSA
 import hashlib
+
+logging.basicConfig(level=logging.INFO)
 
 
 """
@@ -45,7 +49,7 @@ class Message(object):
         return (headers, self.payload)
 
     def _calculate_signature(self):
-        digest = self._calculate_digest()
+        digest = self.digest_val
         public_key = self.remote_public_key
         
         if self.signature_algo == 'RSA-SHA1':
@@ -65,7 +69,6 @@ class Message(object):
             payload_hash = hashlib.sha1(self.payload).hexdigest()
             digest_string = payload_hash + self.signature_algo + (
                 self.certificate.cert_id)
-
             # add url to digest if its a request message
             if self.is_request == True:
                 digest_string += self.url
@@ -108,11 +111,11 @@ class InboundMessage(Message):
     """
     def verify_signature(self):
         # TODO:FIX decrypt the signature and check with calculated digest
-        digest = self._calculate_digest()
+        calc_digest = self._calculate_digest()
         key = RSA.importKey(self.local_private_key)
-        calc_digest = key.decrypt(self.signature_val.decode('hex'))
+        digest = key.decrypt(self.signature_val.decode('hex'))
 
-        if self.digest_val == calc_digest:
+        if digest == calc_digest:
             return True
         else:
             return False
@@ -121,6 +124,7 @@ class InboundMessage(Message):
     Utility method to decrypt.
     """
     def decrypt(self):
+        logging.info('Payload before decryption: %s' % self.payload.encode('hex'))
         key = RSA.importKey(self.local_private_key)
         self.payload = key.decrypt(self.payload)
     
@@ -161,9 +165,9 @@ class OutboundMessage(Message):
         Message.__init__(self, **kwargs)
 
         # OutboundMessage() doesn't need these values, it will calculate them
-        self.signature_val = self._calculate_signature()
-        self.digest_val = self._calculate_digest()
-        self.key_encrypted = self._calculate_sym_key()
+        #self.signature_val = self._calculate_signature()
+        #self.digest_val = self._calculate_digest()
+        #self.key_encrypted = self._calculate_sym_key()
 
     """
     Encrypts a message.
@@ -174,8 +178,8 @@ class OutboundMessage(Message):
         self.payload = key.encrypt(self.payload, 32)[0]
 
         # OutboundMessage() doesn't need these values, it will calculate them
-        self.signature_val = self._calculate_signature()
         self.digest_val = self._calculate_digest()
+        self.signature_val = self._calculate_signature()
         self.key_encrypted = self._calculate_sym_key()
 
 
