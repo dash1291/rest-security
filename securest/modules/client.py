@@ -22,23 +22,31 @@ class SecurestClient(object):
         self.private_key = kwargs['private_key']
 
     def _handle_response(self, response_obj):
-        # handle response here (verify, decrypt, etc.)
-        rm = InboundMessage.from_message_data(
-                headers_dict=response_obj.headers,
-                payload=response_obj.text.decode('hex'),
-                local_private_key=self.private_key,
-                is_request=False, certificate=self.server_certificate, url='')
+        if response_obj.status_code == 200:
+            # handle response here (verify, decrypt, etc.)
+            rm = InboundMessage.from_message_data(
+                    headers_dict=response_obj.headers,
+                    payload=response_obj.text.decode('hex'),
+                    local_private_key=self.private_key,
+                    is_request=False, certificate=self.server_certificate, url='')
 
 
-        rm.decrypt()
-        return rm.to_message_data()
+            rm.decrypt()
+            return rm.to_message_data()
+        else:
+            return (response_obj.headers, response_obj.text)
 
-    """
-    Utility method to make a request and return a response.
-
-    This should be used to make most of the requests to the API.
-    """
     def make_request(self, url, **kwargs):
+        request = self.create_request(url, **kwargs)
+        return self.send(request)
+
+    """
+    Utility method to create request data.
+
+    This is the intermediate method that should be used to prepare the request,
+    before sending it using, the `send()` method.
+    """
+    def create_request(self, url, **kwargs):
         headers = kwargs['headers']
         data = kwargs['data']
 
@@ -56,10 +64,12 @@ class SecurestClient(object):
         }
 
         rm = OutboundMessage(**params)
-
         rm.encrypt()
         (headers, content) = rm.to_message_data()
 
-        # `response` will contain unprocess/encrypted response.
+        return (url, headers, content)
+
+    def send(self, request):
+        (url, headers, content) = request
         response = requests.post(url, headers=headers, data=content)
         return self._handle_response(response)
