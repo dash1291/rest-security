@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -6,6 +7,8 @@ from django.http import HttpResponse
 from securest.core import (OutboundMessage, InboundMessage, CertificateModel,
     Message)
 from .models import CertificateModel as DjangoDB_model
+
+logging.basicConfig(level=logging.INFO)
 
 # pull these from django.conf
 SECUREST_DB_MODEL = DjangoDB_model
@@ -33,23 +36,40 @@ class Middleware(object):
             return None
 
         cert_id = request.META[prefix + 'CERTIFICATEID']
-        certificate = DjangoCertificateModel.get(cert_id)
+        
+        try:
+            certificate = DjangoCertificateModel.get(cert_id)
+        except:
+            print 'here'
+            certificate = None
+            res = HttpResponse('Bad client certificate id.')
+            res.status_code = 403
+            return res
+
         self.client_certificate = certificate
 
-        request_msg = InboundMessage.from_message_data(url=request.path,
+        request_msg = InboundMessage.from_message_data(url=request.build_absolute_uri(),
             headers_dict=request.META, payload=request.body,
             certificate=certificate, local_private_key=SERVER_PRIVATE_KEY,
             is_request=True)
 
-        if request_msg.verify_signature() == False:
-            return HttpResponse('error')
+        sig_result = request_msg.verify_signature()
+        
+        if sig_result == False:
+            res = HttpResponse('Bad Signature')
+            res.status_code = 403
+            return res
         else:
             request_msg.decrypt()
             (headers, content) = request_msg.to_message_data()
+            logging.info('Request headers %s' % json.dumps(headers))
 
             request.securest_decrypted = json.loads(content)
 
     def process_response(self, request, response):
+        if response.status_code == 403:
+            return response
+
         if not (request.path in PROTECT_LIST):
             return None
 
