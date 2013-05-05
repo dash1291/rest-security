@@ -27,14 +27,16 @@ class SecurestClient(object):
             rm = InboundMessage.from_message_data(
                     headers_dict=response_obj.headers,
                     payload=response_obj.text.decode('hex'),
-                    local_private_key=self.private_key,
+                    local_private_key=self.private_key, headers_prefix='',
                     is_request=False, certificate=self.server_certificate, url='')
 
 
             rm.decrypt()
-            return rm.to_message_data()
+            (headers, content) = rm.to_message_data()
+            return (200, headers, content)
         else:
-            return (response_obj.headers, response_obj.text)
+            return (response_obj.status_code, 
+                response_obj.headers, response_obj.text)
 
     def make_request(self, url, **kwargs):
         request = self.create_request(url, **kwargs)

@@ -1,8 +1,11 @@
 import logging
 
 from Crypto import Random
+from Crypto.Random.random import getrandbits
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
 import hashlib
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,8 +62,8 @@ class Message(object):
         return signature_val.encode('hex')
 
     def _calculate_sym_key(self):
-        # TODO
-        return '11'
+        rand_key = os.urandom(16).encode('hex')
+        return rand_key
 
     def _calculate_digest(self):
         # TODO
@@ -126,11 +129,16 @@ class InboundMessage(Message):
     def decrypt(self):
         logging.info('Payload before decryption: %s' % self.payload.encode('hex'))
         key = RSA.importKey(self.local_private_key)
-        self.payload = key.decrypt(self.payload)
+        sym_key = key.decrypt(self.key_encrypted.decode('hex'))
+
+        iv = self.payload[:16]
+        cipher = AES.new(str(sym_key), AES.MODE_CFB, iv)
+        self.payload = cipher.decrypt(self.payload[16:])
+
     
     @staticmethod
     def from_message_data(**kwargs):
-        prefix = 'HTTP_' + Message.prefix
+        prefix = kwargs['headers_prefix'] + Message.prefix
         headers_dict = kwargs['headers_dict']
 
         params = {
@@ -173,14 +181,17 @@ class OutboundMessage(Message):
     Encrypts a message.
     """
     def encrypt(self):
-        public_key = self.remote_public_key
-        key = RSA.importKey(public_key)
-        self.payload = key.encrypt(self.payload, 32)[0]
+        sym_key = self._calculate_sym_key()
+        key = RSA.importKey(self.remote_public_key)
 
-        # OutboundMessage() doesn't need these values, it will calculate them
+        self.key_encrypted = key.encrypt(str(sym_key), 32)[0].encode('hex')
+
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(str(sym_key), AES.MODE_CFB, iv)
+        self.payload = (iv + cipher.encrypt(self.payload))
+
         self.digest_val = self._calculate_digest()
         self.signature_val = self._calculate_signature()
-        self.key_encrypted = self._calculate_sym_key()
 
 
 """

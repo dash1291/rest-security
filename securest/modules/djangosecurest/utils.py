@@ -51,7 +51,7 @@ class Middleware(object):
         request_msg = InboundMessage.from_message_data(url=request.build_absolute_uri(),
             headers_dict=request.META, payload=request.body,
             certificate=certificate, local_private_key=SERVER_PRIVATE_KEY,
-            is_request=True)
+            is_request=True, headers_prefix='HTTP_')
 
         sig_result = request_msg.verify_signature()
         
