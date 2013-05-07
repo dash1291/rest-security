@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+	<head>
+		<script src="script.js"></script>
+		<style>
+		</style>
+	</head>
+	<body>
+		{% for test in tests %}
+		<div class="test-case">
+			<p><b>Test case</b>: {{ test.name }}</p>
+			<p><b>Status</b>: {{ test.status }}</p>
+			<div><b>Headers</b>: <br/>
+			{% for header in test.headers.keys() %}
+			{{ header }}: {{ test.headers[header] }}<br/>
+			{% endfor %}
+			</div>
+			<p><b>Response</b>: {{ test.res }}</p>
+		</div>
+		{% endfor %}
+	</body>
+</html>
