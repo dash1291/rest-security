@@ -127,7 +127,7 @@ class InboundMessage(Message):
     Utility method to decrypt.
     """
     def decrypt(self):
-        logging.info('Payload before decryption: %s' % self.payload.encode('hex'))
+        #logging.info('Payload before decryption: %s' % self.payload.encode('hex'))
         key = RSA.importKey(self.local_private_key)
         sym_key = key.decrypt(self.key_encrypted.decode('hex'))
 

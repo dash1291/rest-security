@@ -28,10 +28,14 @@ class SecurestClient(object):
                     headers_dict=response_obj.headers,
                     payload=response_obj.text.decode('hex'),
                     local_private_key=self.private_key, headers_prefix='',
-                    is_request=False, certificate=self.server_certificate, url='')
+                    is_request=False, certificate=self.server_certificate,
+                    url='')
 
-
-            rm.decrypt()
+            try:
+                rm.decrypt()
+            except:
+                return (403, response_obj.headers,
+                    'Content cannot be decrypted.')
             (headers, content) = rm.to_message_data()
             return (200, headers, content)
         else:

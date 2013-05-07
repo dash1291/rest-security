@@ -1,5 +1,7 @@
 from django.conf.urls import patterns, include, url
+
 from views import *
+from securest.modules.djangosecurest.views import generate_session_token
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
@@ -8,6 +10,8 @@ from views import *
 urlpatterns = patterns('',
 	url('^test/$', test),
 	url('^create_cert/$', app_signup),
+	url('^register/$', register_user),
+	url('^session_token/$', generate_session_token),
     # Examples:
     # url(r'^$', 'securesttest.views.home', name='home'),
     # url(r'^securesttest/', include('securesttest.foo.urls')),

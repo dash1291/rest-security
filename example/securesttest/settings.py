@@ -116,7 +116,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'securest.modules.djangosecurest'
+    'securest.modules.djangosecurest',
+    'securesttest',
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
@@ -153,7 +154,8 @@ LOGGING = {
 }
 
 SECUREST_SERVER_CERTIFICATE_ID = 'cert123'
-SECUREST_PRIVATE_KEY = '-----BEGIN RSA PRIVATE KEY-----\nMIICXQIBAAKBgQCxKrTkA3UVbziDZwPlsQY5zJBE4riPZaakJZSwgAQ6bkKpvJuM\nlOIN0eRQ/eZMwMtOnVqWDWCiMujHiwyFxbFR12WzLjT50Y36DCozDWm3zJnu0bUH\nP7fdRirhEKQ1B7dEeWwgQcNsOZmy6XFt81drGh3zmOnKCD5DfTjzE9xHdwIDAQAB\nAoGBAIcrDyHbpWu6FILkiKuo2RgmA3gbBjaZln8sEPpsYU13LDM2K/Mg8CsdFTXZ\n0OiEO1j6Ys+S20RE1SbQ5rf1Maf58bmSVjErALz3GiFddWpF1XDSNEc2dg1aIG+t\niBwtiQAQ7ywlOgm70dwSYEYB0eAyjUybCocfFFZ2tlCVn7ppAkEAwhkwgCRPvC/z\n37R/IQqsAwr2Fp7cfBtxfXIa+n33nTtAGivnGz2Jy/Zq1OVvFMlitIwCEvEULJN+\nxtQB/pk26wJBAOmrK2vUh1LPyIVLbOmWURQpd15AiYT2bLcImq4hJveOo+NP8i/I\nsGmoGEZKPnABr6LSbtDS4O286mj3nCOfJqUCQEDzwvourIwSE+8ZbK1278b45Q7+\nzFOvr1PGWmbWvoTcLgBUDrtb5X/ejzN9L6XqGmDGtW73Q8QC+5q3mY9EYE8CQQDb\ntqZaevlPZa8fnt9m+H9+XMsv5bEpQ+jPZhjDuMqCJi52E/se8S7n+jXxCeiRuxQi\nHooycscq4+LqFkFLwV89AkBsL60YDWplZTTxyXXTmgTxt4JYwH4fQtR+RV9YvCGg\nOw/C9PSCDF2f4vL5BZzQro1DclVTKAlVNYITWBOvVZFH\n-----END RSA PRIVATE KEY-----'
+SECUREST_PRIVATE_KEY = '-----BEGIN RSA PRIVATE KEY-----\nMIICXQIBAAKBgQC7hb9QECBgetfCKxwwcVaAXjDowKq9D5EtHVTAJMTxZVgpcl+a\nY5cZv0YTvWdbFtboqKBzDsBk2BqLe37OkMkQz8uvlO5Istmz4xZh3tLqoum098ml\nGtSRxnTpovtogspTP5nV9ld7Js9OiuC8SEIJNXHRAz/9meTBblMEuCRTAQIDAQAB\nAoGBAKtJjSn9wQU/0EsdA7/AFypkXzqLmqndSVezPhHQxFBXqQMa5PbqVz/+dm1b\nicgrgZy9Quo2JEk5GG4mHPtkRzNRaPvmktIfj0auO2HhZh3r0flD6depgZ99rQuX\n4CLMn8FKvO2HyXfexgfCSpiwEuC/5+KJSKX5MfVHk6ZvXFEdAkEAycANOPHp5LNm\nRNuYpnNlKHbJtApu9eke2sT05E6U3rnkKHEaFuMSNg/ybi1/0hxYAa5yrGTo/VAX\nAw0yPdYq9wJBAO3yS4c9JHgGXaPDWEWklZrhvgq3SgG6Td5N2FHZgh2zXK/W7/t+\ny2iS0qHMWyRcwrPIse8qE/MQM4K1OAjOO8cCQHYuMBCpdO9pP4EaecMXWaxoWSND\n8VfPpSlVsnaCqaYGkmY2SqgZf7N3h/WOZY+41ry1aaseuXSZk8FP25xpdmUCQQCz\n+2Yt8Y24S/hges42P3v6H27EZEfSbr2fvXo2zzOgi588UnRL42iwvP4d7Jm0M4YC\nv3f30/grDsInyDOOVZDZAkBHx6/WjcMFwBYhkSb7jcRXyTseD33l2r8fZxZE/kga\nTxZbW28cL54pdsdh/JkGFrBf8hwH33xqFUBekz39vl9c\n-----END RSA PRIVATE KEY-----'
 SECUREST_PROTECT_LIST = [
     '/test/',
+    '/register/'
 ]
